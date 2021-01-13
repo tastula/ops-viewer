@@ -1,6 +1,10 @@
 import React from 'react';
 import logo from './logo.svg';
 import './App.css';
+import someCourses from './res/someCourses.json';
+import { CourseUnit } from './models';
+
+const courseUnits: CourseUnit = someCourses;
 
 function App() {
   return (
@@ -16,7 +20,7 @@ function App() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Learn React
+          {courseUnits.length}
         </a>
       </header>
     </div>
