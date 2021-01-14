@@ -3,5 +3,23 @@
 Visualize curriculums and prerequisite paths of Finnish universities. Supports
 student information system Sisu's course unit format.
 
-![Concurrency's prerequisites](screenshots/concurrency.png)
-![Macroeconomics II's prerequisites](screenshots/macroecon2.png)
+![Example screenshot with a law course](screenshots/legal-aspects.png)
+
+## Features
+
+Implemented
+- course search and visualization
+
+Planned
+- better graphing
+- selecting curriculum years
+- detailed course information
+- links to official curriculum
+- support for multiple universities
+
+## Installation and running
+
+```
+npm install
+npm start
+```

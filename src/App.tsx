@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import courseData from './res/tieCourses.json';
+import courseData from './res/newCourses.json';
 import Tree from 'react-d3-tree';
 import { CourseUnit, PrerequisiteGroup } from './models';
 import { RawNodeDatum } from 'react-d3-tree/lib/types/common';
 import FormControl from 'react-bootstrap/FormControl';
 import InputGroup from 'react-bootstrap/InputGroup';
 import ListGroup from 'react-bootstrap/ListGroup';
+import Navbar from 'react-bootstrap/Navbar';
 
 // Make sure only currently available courses appear
+const filterCurriculums = true;
 const cleanedCourseData: CourseUnit[] = (courseData as CourseUnit[]).filter((course: CourseUnit) => {
-  return course.curriculumPeriodIds.some((curriculum: string) => curriculum.includes('2020'));
+  return filterCurriculums ? course.curriculumPeriodIds.some((curriculum: string) => curriculum.includes('2020')) : true;
 });
 
 // Index courses by both internal groupId and known course code
@@ -101,7 +103,7 @@ function App() {
   }, [currentCourse]);
 
   const courseSearch = (): JSX.Element => (
-    <InputGroup style={{ padding: '12px' }}>
+    <InputGroup style={{ width: '300px' }}>
       <FormControl
         type="text"
         value={searchWord}
@@ -109,10 +111,6 @@ function App() {
         onChange={(event) => setSearchWord(event.target.value)}
       />
     </InputGroup>
-  );
-
-  const courseName = (): JSX.Element => (
-    <h1>{currentCourse} {selectName(indexedCourses.get(currentCourse))}</h1>
   );
 
   const courseList = (): JSX.Element => (
@@ -128,18 +126,32 @@ function App() {
     </ListGroup>
   );
 
+  const courseName = (): string => (
+    `${currentCourse} ${selectName(indexedCourses.get(currentCourse))}`
+  );
+
+  const courseGraph = (): JSX.Element => (
+    <Tree data={nodeData} pathFunc="step" orientation="vertical" translate={{x: 800, y: 200}}/>
+  );
+
+  const nabBar = (): JSX.Element => (
+    <Navbar variant="dark" style={{ height: '80px', background: '#4E008E' }}>
+      {courseSearch()}
+      <div style={{ marginLeft: '16px' }}>
+        <Navbar.Brand>OPS viewer // {courseName()}</Navbar.Brand>
+      </div>
+    </Navbar>
+  );
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'row' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', width: '400px', height: '100vh' }}>
-        {courseSearch()}
-        <div style={{ flexGrow: 1, overflowY: 'scroll' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {nabBar()}
+      <div style={{ display: 'flex', flexDirection: 'row' }}>
+        <div style={{ width: '332px', height: 'calc(100vh - 80px)', overflowY: 'scroll', flexShrink: 0 }}>
           {courseList()}
         </div>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, height: '100vh', margin: '12px' }}>
-        {courseName()}
-        <div style={{ flexGrow: 1, borderWidth: 4 }}>
-          <Tree data={nodeData} pathFunc="step" orientation="vertical" translate={{x: 800, y: 200}}/>
+        <div style={{ flexGrow: 1 }}>
+          {courseGraph()}
         </div>
       </div>
     </div>
