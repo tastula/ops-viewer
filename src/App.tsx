@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import courseData from './res/newCourses.json';
+import courseData from './res/tieCourses.json';
 import Tree from 'react-d3-tree';
 import { CourseUnit, PrerequisiteGroup } from './models';
 import { RawNodeDatum } from 'react-d3-tree/lib/types/common';
+import FormControl from 'react-bootstrap/FormControl';
+import InputGroup from 'react-bootstrap/InputGroup';
+import ListGroup from 'react-bootstrap/ListGroup';
 
 // Make sure only currently available courses appear
 const cleanedCourseData: CourseUnit[] = (courseData as CourseUnit[]).filter((course: CourseUnit) => {
@@ -97,25 +100,46 @@ function App() {
     setNodeData(createNodes(currentCourse));
   }, [currentCourse]);
 
+  const courseSearch = (): JSX.Element => (
+    <InputGroup style={{ padding: '12px' }}>
+      <FormControl
+        type="text"
+        value={searchWord}
+        placeholder="Search"
+        onChange={(event) => setSearchWord(event.target.value)}
+      />
+    </InputGroup>
+  );
+
+  const courseName = (): JSX.Element => (
+    <h1>{currentCourse} {selectName(indexedCourses.get(currentCourse))}</h1>
+  );
+
+  const courseList = (): JSX.Element => (
+    <ListGroup>
+      {courseCodes
+        .filter((code) => code.toLowerCase().includes(searchWord.toLowerCase()))
+        .map((code: string, idx: number) => (
+          <ListGroup.Item variant="light" action active={code === currentCourse} key={idx} onClick={() => setCurrentCourse(code)}>
+            {code}
+          </ListGroup.Item>
+        ))
+      }
+    </ListGroup>
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'row' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', width: '80wv', height: '100vh' }}>
-        <h1>{currentCourse} {selectName(indexedCourses.get(currentCourse))}</h1>
-        <div style={{ flexGrow: 1, borderWidth: 4 }}>
-          <Tree data={nodeData} pathFunc="step" orientation="vertical" translate={{x: 800, y: 200}}/>
+      <div style={{ display: 'flex', flexDirection: 'column', width: '400px', height: '100vh' }}>
+        {courseSearch()}
+        <div style={{ flexGrow: 1, overflowY: 'scroll' }}>
+          {courseList()}
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, height: '100vh' }}>
-        <input type='text' value={searchWord} onChange={(event) => setSearchWord(event.target.value)} />
-        <div style={{ flexGrow: 1, overflowY: 'scroll' }}>
-          <ul>
-            {courseCodes
-              .filter((code) => code.toLowerCase().includes(searchWord.toLowerCase()))
-              .map((code: string, idx: number) => (
-                <li key={idx} onClick={() => setCurrentCourse(code)}><a href="#">{code}</a></li>
-              ))
-            }
-          </ul>
+      <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, height: '100vh', margin: '12px' }}>
+        {courseName()}
+        <div style={{ flexGrow: 1, borderWidth: 4 }}>
+          <Tree data={nodeData} pathFunc="step" orientation="vertical" translate={{x: 800, y: 200}}/>
         </div>
       </div>
     </div>
