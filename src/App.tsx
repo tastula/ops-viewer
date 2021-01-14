@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import courseData from './res/newCourses.json';
 import Tree from 'react-d3-tree';
-import { CourseUnit, PrerequisiteGroup } from './models';
+import parse from 'html-react-parser';
+import { CourseUnit, LocalizedString, PrerequisiteGroup } from './models';
 import { RawNodeDatum } from 'react-d3-tree/lib/types/common';
 import FormControl from 'react-bootstrap/FormControl';
 import InputGroup from 'react-bootstrap/InputGroup';
 import ListGroup from 'react-bootstrap/ListGroup';
+import Modal from 'react-bootstrap/Modal';
 import Navbar from 'react-bootstrap/Navbar';
 
 // Make sure only currently available courses appear
@@ -25,12 +27,16 @@ cleanedCourseData.forEach((course) => {
 const courseCodes = cleanedCourseData.map((course) => course.code);
 
 const preferEnglish: boolean = true;
-const selectName = (course: CourseUnit | undefined, english: boolean = preferEnglish): string => {
-  if(course) {
-    if(english) return course.name.en ?? course.name.fi ?? 'error';
-    return course.name.fi ?? course.name.en ?? 'error';
+const selectText = (
+  text: LocalizedString | null | undefined,
+  english: boolean = preferEnglish,
+  placeholder: string = 'error',
+): string => {
+  if(text) {
+    if(english) return text.en ?? text.fi ?? placeholder;
+    return text.fi ?? text.en ?? placeholder;
   }
-  return 'error';
+  return placeholder;
 };
 
 const createNodesForCourse = (preGroup: PrerequisiteGroup, compulsory: boolean = true): RawNodeDatum[] | undefined => {
@@ -41,10 +47,12 @@ const createNodesForCourse = (preGroup: PrerequisiteGroup, compulsory: boolean =
       if(course) {
         const preGroups = createNodesForPreGroup(course);
         return {
-          name: selectName(course),
+          name: selectText(course.name),
           children: preGroups?.length === 1 ? preGroups[0].children : preGroups,
           attributes: {
-            type: compulsory ? 'compulsory' : 'optional',
+            node: 'course',
+            code: course.code,
+            type: compulsory ? 'compulsory' : 'recommended',
           }
         }
       }
@@ -62,6 +70,7 @@ const createNodesForPreGroup = (course: CourseUnit): RawNodeDatum[] | undefined 
       name: `Group C${idx + 1}`,
       children: createNodesForCourse(preGroup),
       attributes: {
+        node: 'group',
         type: 'compulsory',
       }
     };
@@ -71,7 +80,8 @@ const createNodesForPreGroup = (course: CourseUnit): RawNodeDatum[] | undefined 
       name: `Group O${idx + 1}`,
       children: createNodesForCourse(preGroup, false),
       attributes: {
-        type: 'optional',
+        node: 'group',
+        type: 'recommended',
       }
     };
   }) ?? [];
@@ -84,19 +94,65 @@ const createNodes = (courseCode: string): RawNodeDatum => {
   if(course) {
     const preGroups = createNodesForPreGroup(course);
     return {
-      name: selectName(course),
+      name: selectText(course.name),
       children: preGroups?.length === 1 ? preGroups[0].children : preGroups,
     }
   }
   return emptyTree;
 };
 
-const emptyTree: RawNodeDatum = { name: 'No data'};
+const emptyTree: RawNodeDatum = { name: 'no data'};
+
+interface CourseInfoModalProps {
+  node: RawNodeDatum | undefined;
+  show: boolean;
+  onHide: () => void;
+}
+
+function CourseInfoModal(props: CourseInfoModalProps) {
+  const noAdditionalMessage = 'No additional prerequisite information.'
+  // Default values are errors that get replaced
+  let modalTitle = 'error';
+  let modalBody = noAdditionalMessage;
+  
+  // Display course node
+  if(props.node?.attributes?.node === 'course') {
+    const course = indexedCourses.get(props.node?.attributes?.code);
+    modalTitle = selectText(course?.name);
+    modalBody = selectText(course?.prereqisites, preferEnglish, noAdditionalMessage);
+  }
+
+  // Display group node
+  if(props.node?.attributes?.node === 'group') {
+    const preType = props.node?.attributes?.type;
+    modalTitle = props.node.name;
+    modalBody = `This prerequisite group lists ${preType} courses and study modules.`;
+  }
+
+  return (
+    <Modal
+      show={props.show}
+      size="lg"
+      centered
+      animation={false}
+      onHide={props.onHide}
+    >
+      <Modal.Header closeButton>
+        <Modal.Title>{modalTitle}</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+          {parse(modalBody)}
+      </Modal.Body>
+    </Modal>
+  );
+}
 
 function App() {
   const [currentCourse, setCurrentCourse] = useState<string>('COMP.CS.350');
+  const [clickedNode, setClickedNode] = useState<RawNodeDatum | undefined>(undefined);
   const [searchWord, setSearchWord] = useState<string>('');
   const [nodeData, setNodeData] = useState<RawNodeDatum>(emptyTree);
+  const [infoVisible, setInfoVisible] = useState<boolean>(false);
 
   useEffect(() => {
     setNodeData(createNodes(currentCourse));
@@ -127,12 +183,28 @@ function App() {
   );
 
   const courseName = (): string => (
-    `${currentCourse} ${selectName(indexedCourses.get(currentCourse))}`
+    `${currentCourse} ${selectText(indexedCourses.get(currentCourse)?.name)}`
   );
 
   const courseGraph = (): JSX.Element => (
-    <Tree data={nodeData} pathFunc="step" orientation="vertical" translate={{x: 800, y: 200}}/>
+    <Tree
+      data={nodeData}
+      pathFunc="step"
+      orientation="vertical"
+      collapsible={false}
+      onNodeClick={(node) => openModal(node)}
+      translate={{x: 800, y: 200}
+    }/>
   );
+
+  const openModal = (node: RawNodeDatum) => {
+    console.log(node);
+    const clickedName = node?.attributes?.code ?? node.name;
+    if(clickedName !== 'no data') {
+      setClickedNode(node);
+      setInfoVisible(true);
+    }
+  };
 
   const nabBar = (): JSX.Element => (
     <Navbar variant="dark" style={{ height: '80px', background: '#4E008E' }}>
@@ -154,6 +226,11 @@ function App() {
           {courseGraph()}
         </div>
       </div>
+      <CourseInfoModal
+        node={clickedNode}
+        show={infoVisible}
+        onHide={() => setInfoVisible(false)}
+      />
     </div>
   );
 }
